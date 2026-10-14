@@ -112,8 +112,17 @@ function norm(s: string): string {
 
 function seasonOf(s: string): number {
     const t = toHalfWidth(s).toLowerCase();
-    let m = t.match(/season\s*(\d+)/) || t.match(/第\s*(\d+)\s*[季期部]/) || t.match(/\b(\d+)(?:st|nd|rd|th)\s*season\b/);
-    if (m) return parseInt(m[1], 10);
+    const m =
+        t.match(/season\s*(\d+)/) ||
+        t.match(/第\s*(\d+)\s*[季期部]/) ||
+        t.match(/\b(\d+)(?:st|nd|rd|th)\s*season\b/) ||
+        t.match(/\bs\s*(\d{1,2})\b/) ||
+        // trailing bare number, e.g. "Mairimashita! Iruma-kun 3"
+        t.match(/[^0-9](\d{1,2})\s*$/);
+    if (m) {
+        const n = parseInt(m[1], 10);
+        if (!isNaN(n) && n > 0 && n <= 12) return n;
+    }
     return 0;
 }
 
@@ -153,10 +162,12 @@ function scoreOne(query: string, name: string): number {
         score = denom > 0 ? Math.round((common / denom) * 60) : 0;
     }
 
-    // Season mismatch is a strong negative signal.
+    // Season mismatch is a strong negative signal: a "… 3rd Season" query must
+    // not match the season-1 folder (a folder without any marker is season 1).
     const qs = seasonOf(query);
     const ns = seasonOf(name);
     if (qs > 0 && ns > 0 && qs !== ns) score -= 45;
+    else if (qs > 1 && ns === 0) score -= 45;
     return score;
 }
 
