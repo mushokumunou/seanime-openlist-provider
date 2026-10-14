@@ -1,0 +1,96 @@
+{
+    "id": "openlist-provider",
+    "name": "OpenList",
+    "version": "0.1.0",
+    "manifestURI": "https://raw.githubusercontent.com/mushokumunou/seanime-openlist-provider/main/openlist-provider.json",
+    "language": "typescript",
+    "type": "onlinestream-provider",
+    "description": "Stream anime stored on an OpenList instance (115 / Aliyun / Baidu / local ...). Searches the OpenList directory tree for the matching show, lists its video files as episodes and plays them through OpenList's 302 redirect endpoint, so the media bytes go straight from the storage/CDN to your player.",
+    "author": "mushokumunou",
+    "icon": "",
+    "website": "",
+    "readme": "https://raw.githubusercontent.com/mushokumunou/seanime-openlist-provider/main/README.md",
+    "notes": "Setup:\n1. Deploy OpenList and mount your drive (e.g. a 115 storage) at some path.\n2. In OpenList, open Settings > API / or use the web UI to copy an API token (a token is optional if your instance allows guest access).\n3. Fill in the extension settings: base URL, token, and the directory that contains your anime folders.\nPlayback uses <baseUrl>/d/<path>?sign=... which makes OpenList reply with an HTTP 302 to the real file - the Seanime server is not used as a relay. Keep Web Proxy disabled on the storage for true 302 streaming.",
+    "lang": "multi",
+    "payloadURI": "https://raw.githubusercontent.com/mushokumunou/seanime-openlist-provider/main/openlist-provider.ts",
+    "userConfig": {
+        "version": 1,
+        "requiresConfig": true,
+        "fields": [
+            {
+                "type": "text",
+                "name": "baseUrl",
+                "label": "OpenList URL",
+                "default": "https://openlist.8w8.xyz"
+            },
+            {
+                "type": "text",
+                "name": "token",
+                "label": "OpenList API token (optional if guest access is enabled)",
+                "default": ""
+            },
+            {
+                "type": "text",
+                "name": "rootDir",
+                "label": "Root directory that contains your show folders (e.g. /115/anime)",
+                "default": "/"
+            },
+            {
+                "type": "text",
+                "name": "maxDepth",
+                "label": "How many folder levels to scan inside a show folder",
+                "default": "3"
+            },
+            {
+                "type": "text",
+                "name": "minSizeMB",
+                "label": "Ignore video files smaller than this (MB)",
+                "default": "5"
+            },
+            {
+                "type": "text",
+                "name": "videoExts",
+                "label": "Video extensions, comma separated",
+                "default": "mkv,mp4,avi,ts,m2ts,webm,mov,wmv,flv,vob,iso,rmvb"
+            },
+            {
+                "type": "switch",
+                "name": "preferDirectLink",
+                "label": "Also expose the raw storage/CDN link as a second video source",
+                "default": "false"
+            },
+            {
+                "type": "switch",
+                "name": "includeSubtitles",
+                "label": "Attach sidecar subtitle files (.ass/.srt) found next to the video",
+                "default": "true"
+            },
+            {
+                "type": "text",
+                "name": "matchThreshold",
+                "label": "Folder match strictness (0-100, higher = stricter)",
+                "default": "30"
+            },
+            {
+                "type": "switch",
+                "name": "debug",
+                "label": "Log debug information to the server console",
+                "default": "false"
+            }
+        ]
+    },
+    "plugin": {
+        "version": "1",
+        "permissions": {
+            "scopes": [],
+            "allow": {
+                "networkAccess": {
+                    "allowedDomains": [
+                        "*"
+                    ],
+                    "reasoning": "The OpenList instance URL is configured by the user, so its domain cannot be known in advance."
+                }
+            }
+        }
+    }
+}
