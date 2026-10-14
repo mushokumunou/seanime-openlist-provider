@@ -31,6 +31,8 @@ const DEFAULTS: { [k: string]: string } = {
     preferDirectLink: "false",
     includeSubtitles: "true",
     matchThreshold: "30",
+    userAgent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+    excludePatterns: "NCED,NCOP,Preview,PV,CM,Menu,Scan,Sample,Trailer,OP,ED,SP,Extra,Picture,Drama,特典,预告,菜单",
     debug: "false",
 };
 
@@ -180,10 +182,15 @@ function apiBase(): string {
 
 function authHeaders(): { [k: string]: string } {
     const h: { [k: string]: string } = { "Content-Type": "application/json" };
+    // Some instances sit behind Cloudflare, which rejects requests without a
+    // User-Agent (error 1010).
+    const ua = cfg("userAgent", DEFAULTS.userAgent);
+    if (ua) h["User-Agent"] = ua;
     const token = cfg("token", "");
     if (token) h["Authorization"] = token;
     return h;
 }
+
 
 async function olApi(path: string, body: any): Promise<any> {
     const url = apiBase() + path;
@@ -288,6 +295,29 @@ function minSizeBytes(): number {
     return cfgInt("minSizeMB", 5) * 1024 * 1024;
 }
 
+function escapeRe(s: string): string {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+let EXTRA_RE: any = undefined;
+function isExtraneous(name: string): boolean {
+    if (EXTRA_RE === undefined) {
+        const raw = cfg("excludePatterns", DEFAULTS.excludePatterns);
+        const list = raw.split(",");
+        const parts: string[] = [];
+        for (let i = 0; i < list.length; i++) {
+            const p = list[i].trim();
+            if (p) parts.push(escapeRe(p));
+        }
+        EXTRA_RE = parts.length
+            ? new RegExp("(^|[^a-z0-9\\u3040-\\u30ff\\u4e00-\\u9fff])(" + parts.join("|") + ")([^a-z0-9\\u3040-\\u30ff\\u4e00-\\u9fff]|$)", "i")
+            : null;
+    }
+    if (!EXTRA_RE) return false;
+    return EXTRA_RE.test(toHalfWidth(name).replace(/\.[a-z0-9]{2,5}$/i, ""));
+}
+
+
 // ---------------------------------------------------------------------------
 // Episode number parsing
 // ---------------------------------------------------------------------------
@@ -358,6 +388,10 @@ async function collectVideos(dirPath: string, depth: number, maxDepth: number, a
             continue;
         }
         if (!isVideo(e.name)) continue;
+        if (isExtraneous(e.name)) {
+            dbg("skip (extraneous): " + e.name);
+            continue;
+        }
         if (typeof e.size === "number" && e.size < minSizeBytes()) {
             dbg("skip (too small): " + e.name + " (" + e.size + " bytes)");
             continue;
@@ -424,7 +458,10 @@ class Provider {
 
         const threshold = cfgInt("matchThreshold", 30);
         let picked = ranked.filter((r) => r.score >= threshold);
-        if (picked.length === 0 && ranked.length > 0 && ranked[0].score >= 12) picked = [ranked[0]];
+        // Relaxed fallback: only accept a single candidate that is close to the
+        // threshold, so that a nonsense query never plays the wrong show.
+        const relaxed = Math.max(20, threshold - 10);
+        if (picked.length === 0 && ranked.length > 0 && ranked[0].score >= relaxed) picked = [ranked[0]];
 
         // The root directory itself may hold the episodes directly.
         if (picked.length === 0) {

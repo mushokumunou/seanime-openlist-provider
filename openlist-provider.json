@@ -1,7 +1,7 @@
 {
     "id": "openlist-provider",
     "name": "OpenList",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "manifestURI": "https://raw.githubusercontent.com/mushokumunou/seanime-openlist-provider/main/openlist-provider.json",
     "language": "typescript",
     "type": "onlinestream-provider",
@@ -10,7 +10,7 @@
     "icon": "",
     "website": "",
     "readme": "https://raw.githubusercontent.com/mushokumunou/seanime-openlist-provider/main/README.md",
-    "notes": "Setup:\n1. Deploy OpenList and mount your drive (e.g. a 115 storage) at some path.\n2. In OpenList, open Settings > API / or use the web UI to copy an API token (a token is optional if your instance allows guest access).\n3. Fill in the extension settings: base URL, token, and the directory that contains your anime folders.\nPlayback uses <baseUrl>/d/<path>?sign=... which makes OpenList reply with an HTTP 302 to the real file - the Seanime server is not used as a relay. Keep Web Proxy disabled on the storage for true 302 streaming.",
+    "notes": "Setup:\n1. Deploy OpenList and mount your drive (e.g. a 115 storage) at some path.\n2. Copy an API token from OpenList (Profile -> API token); a token is optional if the instance allows guest access.\n3. Configure the extension: base URL, token, and the directory that holds your show folders (e.g. /115/anime).\nPlayback uses <baseUrl>/d/<path>?sign=... which makes OpenList answer with an HTTP 302 to the real file, so the Seanime server is never used as a relay. Keep Web Proxy disabled on the storage for true 302 streaming. Verified against OpenList v4.2.6 + a 115 Cloud storage: /d/ -> 302 -> cdnfhnfile.115cdn.net -> 206.",
     "lang": "multi",
     "payloadURI": "https://raw.githubusercontent.com/mushokumunou/seanime-openlist-provider/main/openlist-provider.ts",
     "userConfig": {
@@ -70,6 +70,18 @@
                 "name": "matchThreshold",
                 "label": "Folder match strictness (0-100, higher = stricter)",
                 "default": "30"
+            },
+            {
+                "type": "text",
+                "name": "userAgent",
+                "label": "HTTP User-Agent (Cloudflare-fronted instances reject requests without one)",
+                "default": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+            },
+            {
+                "type": "text",
+                "name": "excludePatterns",
+                "label": "Extra-file patterns to ignore, comma separated (OP/ED/NCED/Preview/Menu/... leave empty to disable)",
+                "default": "NCED,NCOP,Preview,PV,CM,Menu,Scan,Sample,Trailer,OP,ED,SP,Extra,Picture,Drama,特典,预告,菜单"
             },
             {
                 "type": "switch",

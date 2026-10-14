@@ -94,6 +94,7 @@ let firstDir = null;
         check("episodes parsed", eps.length > 0, eps);
         check("episode numbers are positive integers", eps.every((e) => Number.isInteger(e.number) && e.number > 0), eps.map((e) => e.number));
         check("no junk extensions in episodes", eps.every((e) => !/\.(jpg|png|torrent|ass|srt|nfo)$/i.test(e.title)), eps.map((e) => e.title));
+        check("no extras (OP/ED/NCED/Preview/Sample) in episodes", eps.every((e) => !/(^|[^a-z0-9])(OP|ED|NCED|NCOP|Preview|PV|CM|Menu|Scan|Sample|Trailer|SP)([^a-z0-9]|$)/i.test(e.title)), eps.map((e) => e.title));
         check("episode ids carry the OpenList path", eps[0].id.indexOf("||/") > 0, eps[0].id);
         firstEpisode = eps[0];
     }

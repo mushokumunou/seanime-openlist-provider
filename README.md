@@ -64,11 +64,19 @@ Requires Seanime **3.x** with online-streaming extensions support (developed and
    extensions > Loaded external extension id=openlist-provider
    ```
 
-### Option B — hosted (no local path, no dev mode)
+### Option B — install from GitHub (recommended)
 
-Host both files on GitHub raw / any static host, set `payloadURI` to the raw URL of the `.ts`
-file and delete `"isDevelopment": true`. Then install the manifest through
-*Extensions → Install* like any marketplace extension.
+Nothing to copy by hand. In Seanime open **Extensions → Install** and paste the manifest URL:
+
+```
+https://raw.githubusercontent.com/mushokumunou/seanime-openlist-provider/main/openlist-provider.json
+```
+
+Seanime downloads the manifest, fetches the payload from `payloadURI` and registers the provider.
+Updates are picked up by re-installing / reloading the extension.
+
+(The same works for any static host: keep `payloadURI` pointing at the hosted `.ts` and leave out
+`"isDevelopment": true`.)
 
 ---
 
@@ -88,6 +96,8 @@ the provider at runtime):
 | `Expose raw link too` | off | Adds the raw storage/CDN URL as a second video source (bypasses OpenList) |
 | `Attach sidecar subtitles` | on | `.ass/.ssa/.srt` files next to the video are exposed as subtitle tracks |
 | `Match strictness` | `30` | 0–100. Lower it if a show is not found, raise it if the wrong folder matches |
+| `User-Agent` | Chrome UA | Some instances (Cloudflare) reject requests without a User-Agent (error 1010) |
+| `Extra patterns` | `NCED,NCOP,Preview,PV,CM,Menu,Scan,Sample,Trailer,OP,ED,SP,Extra,Picture,Drama,特典,预告,菜单` | Word-boundary patterns that mark a file as "not an episode" (OP/ED, menus, samples, picture dramas …). Empty = disable |
 | `Debug logging` | off | Provider traces in the server console (`[openlist-provider] …`) |
 
 **Playback:** pick the provider on the entry page → *Online streaming*, or set it as the default
@@ -100,7 +110,9 @@ provider in *Settings → Playback → Default episode source*.
 * **Layout:** `<RootDirectory>/<Show folder>/…video files`. Any nesting below that is walked up to
   `Scan depth` (so `Show/Season 2/Show - 13.mkv` works).
 * **Filtering:** only configured video extensions, and only files ≥ `Min video size`.
-  `.ass`, `.jpg`, `.torrent`, `nfo`, samples and other junk never show up as episodes.
+  `.ass`, `.jpg`, `.torrent`, `nfo`, samples and other junk never show up as episodes, and
+  extras (`OP`/`ED`/`NCED`/`Preview`/`Menu`/`Picture Drama`/…) are dropped by the
+  `Extra patterns` list.
 * **Episode numbers** are parsed from the file name, in this order: `E01`/`EP01`, `第01话`,
   `[01]`, ` - 01`, `Episode 01`, then a bare number. `1080p`, `720p` and year numbers are rejected.
   `02v2` → episode 2. When one episode has several files (different qualities), the biggest file
@@ -164,6 +176,24 @@ The harness runs the source through the *same* esbuild transform Seanime uses
 (`new Provider()`), and asserts search / episode parsing / filtering / URL building.
 
 ---
+
+## Verified
+
+Tested against **Seanime 3.10.3** (official Linux release) + **OpenList v4.2.6** with a real
+**115 Cloud** storage:
+
+| Step | Result |
+| --- | --- |
+| Extension load | `extensions > Loaded payload from file/external extension id=openlist-provider` |
+| Provider registered in Seanime's goja VM | `GET /api/v1/extensions/list/onlinestream-provider` → `episodeServers: ["openlist"]` |
+| `search` (inside Seanime) | returned the real show folders of the OpenList instance |
+| `findEpisodes` (inside Seanime) | a 21-episode BDRip season → episodes 1…21 with the original file names, `OP`/`ED`/menu PNGs excluded |
+| `findEpisodeServer` | `https://<openlist>/d/%5BReinForce%5D … S3 01 (…).mkv?sign=…` |
+| Playback URL | `HTTP/2 302` → `Location: https://cdnfhnfile.115cdn.net/…` → `206 Partial Content` (range/seek OK) |
+
+In other words: Seanime asks, this extension answers with an OpenList URL, OpenList redirects to the
+115 CDN, and the player pulls the bytes straight from the CDN — the Seanime server only exchanges a
+few KB of JSON.
 
 ## Troubleshooting
 
